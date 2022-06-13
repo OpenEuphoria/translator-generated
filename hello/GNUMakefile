@@ -1,0 +1,35 @@
+CC     = gcc
+CFLAGS =  -fomit-frame-pointer -c -w -fsigned-char -O2  -I/home/leprechaun/Source/euphoria -ffast-math ${MSIZE}
+LINKER = gcc
+LFLAGS =  $(RUNTIME_LIBRARY) ${CTLFLAGS} ${MSIZE}
+HELLO_SOURCES = init-.c \
+	 hello.c \
+	 main-.c
+HELLO_OBJECTS = init-.o \
+	 hello.o \
+	 main-.o
+HELLO_GENERATED_FILES =  init-.c \
+	 init-.o \
+	 main-.h \
+	 hello.c \
+	 hello.o \
+	 main-.c \
+	 main-.o \
+	 hello.lnk
+
+include config.gnu
+RUNTIME_LIBRARY=/home/leprechaun/Source/euphoria/source/build/eu.a
+/home/leprechaun/Source/translator-generated/hello/hello: $(HELLO_OBJECTS) $(RUNTIME_LIBRARY)  
+	$(LINKER) -o /home/leprechaun/Source/translator-generated/hello/hello $(HELLO_OBJECTS)  $(LFLAGS)
+
+.PHONY: hello-clean hello-clean-all
+
+hello-clean:
+	rm -rf $(HELLO_OBJECTS) 
+
+hello-clean-all: hello-clean
+	rm -rf $(HELLO_SOURCES)  /home/leprechaun/Source/translator-generated/hello/hello
+
+%.o: %.c
+	$(CC) $(CFLAGS) $*.c -o $*.o
+

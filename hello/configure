@@ -1,0 +1,118 @@
+#!/bin/sh
+
+CONFIG_FILE=config.gnu
+PLAT="default_platform"
+ARCH="default_arch"
+
+UNAME_SYSTEM=`(uname -s) 2>/dev/null`  || UNAME_SYSTEM=unknown
+UNAME_MACHINE=`(uname -m) 2>/dev/null` || UNAME_MACHINE=unknown
+UNAME_REL=`(uname -r) 2>/dev/null` || UNAME_REL=unknown
+
+# If under Cygwin or Mingw, we have 2 sets of paths: the normal TRUNKDIR/BUILDDIR/INCDIR defined by
+# the Cygwin path (/cygdrive/c/dir/file) or under Mingw the Mingw path (/c/dir/file); as well as the
+# CYP- versions (c:/dir/file). The normal variables are used by make itself, which can't handle the
+# mixed-mode path and can only deal with pure Cygwin or Mingw ones. (These are also used by the
+# various utilities ike cp, gcc, etc, even though they can handle either format). The CYP- versions
+# are used whenever we call eui, euc, or an euphoria program, as these can only handle mixed-mode
+# paths.
+
+USECYPPATH="false"
+
+# argument sent to the pwd command.  Most platforms no arguments.
+PWDARG=
+if echo "$UNAME_SYSTEM" | grep CYGWIN > /dev/null; then
+    # for now, we build with -mno-cygwin under cygwin, so this is treated
+    # identically to MinGW
+    # A true exu.exe should probably set UNAME_SYSTEM="CYGWIN"
+    UNAME_SYSTEM=WINDOWS
+    # However, since we use absolute paths and Cygwin's make can't deal with
+    # mixed-mode paths (C:/dir/file) the way MSYS's make can, we turn
+    # CYPPATH on
+    USECYPPATH="true"
+    PWDARG=
+    EXE=.exe
+
+elif echo "$UNAME_SYSTEM" | grep MINGW > /dev/null; then
+    UNAME_SYSTEM=WINDOWS
+    USEMINGPATH="true"
+    PWDARG=
+    EXE=.exe
+else
+    PWDARG=
+fi
+
+# gcc doesn't seem to like -m32 on 32-bit machines when there are 
+# no 64-bit machines 
+# with an instruction super set of the 32-bit machine.  This means,
+# -m32 is fine for ix86 32bit machines but bad for ARM and Motorola based
+# machines.
+
+MSIZE="-m32"
+
+if echo "$UNAME_MACHINE" | grep "i[1-7]86" > /dev/null; then
+    HOST_ARCH=ix86
+    MSIZE=-m32
+    
+elif echo "$UNAME_MACHINE" | egrep "x86_64|amd64" > /dev/null; then
+    HOST_ARCH=ix86_64
+    MSIZE=-m64
+    
+elif echo "$UNAME_MACHINE" | grep -i ARM > /dev/null; then
+    HOST_ARCH=ARM
+    MSIZE=
+fi
+ARCH=$HOST_ARCH
+
+if test $UNAME_SYSTEM = "Linux"; then
+    EHOST=ELINUX
+    TARGET=ELINUX
+    LFLAGS="-ldl -lm -lpthread"
+elif test $UNAME_SYSTEM = "WINDOWS"; then
+    EHOST=EWINDOWS
+    TARGET=EWINDOWS
+    LFLAGS=" -lws2_32 "
+    
+    if [ "$USECYPPATH" = "true" ]; then
+       LFLAGS="$LFLAGS  -mno-cygwin"
+    fi
+elif test $UNAME_SYSTEM = "OpenBSD"; then
+    EHOST=OPENBSD
+    TARGET=EOPENBSD
+    EBSD=1
+    LFLAGS=" -lm -lpthread"
+elif test $UNAME_SYSTEM = "NetBSD"; then
+    EHOST=NETBSD
+    TARGET=EBSD
+    EBSD=1
+    LFLAGS=" -lm -lpthread"
+elif test $UNAME_SYSTEM = "FreeBSD"; then
+    EHOST=FREEBSD
+    TARGET=EFREEBSD
+    EBSD=1
+    LFLAGS=" -lm -lpthread"
+# OS X > 10.4 (Darwin version 8 and up) supports 64-bit applications.
+elif test $UNAME_SYSTEM = "Darwin"; then
+    EHOST=EOSX
+    TARGET=EOSX
+    EBSD=1
+    VAL=`echo "$UNAME_REL" | cut -d \. -f 1`
+    if test $VAL -gt 8; then
+        ARCH=ix86_64
+        MSIZE=-m64
+        
+    # PPC will have to be supported manually; Euphoria doesn't currently support PPC.
+    else 
+        ARCH=x86
+        MSIZE=-m32
+        
+    fi
+    LFLAGS = " -lresolv"
+else
+    EHOST=EBSD
+    TARGET=EBSD
+    LFLAGS=" -lm -lpthread"
+fi
+[ -n "$MSIZE" ] && echo "MSIZE=$MSIZE" >> ${CONFIG_FILE}
+[ -n "$LFLAGS" ] && echo "CTLFLAGS=$LFLAGS" >> ${CONFIG_FILE}
+echo >> ${CONFIG_FILE}
+	

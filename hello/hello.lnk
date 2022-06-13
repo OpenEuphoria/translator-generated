@@ -1,0 +1,4 @@
+init-.o
+hello.o
+main-.o
+$(RUNTIME_LIBRARY)
